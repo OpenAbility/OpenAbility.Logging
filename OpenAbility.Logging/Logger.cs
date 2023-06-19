@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace OpenAbility.Logging;
@@ -117,6 +118,25 @@ public class Logger
 		Log(LogSeverity.Fatal, fmt, content);
 	}
 
+	public void Throw(string fmt, params object?[] content)
+	{
+		Log(LogSeverity.Fatal, "{}:\n{}", Format(fmt, content), Environment.StackTrace);
+	}
+
+	private string Format(string fmt, params object?[] content)
+	{
+		Regex replaceRegex = new Regex(Regex.Escape("{}"), RegexOptions.Compiled | RegexOptions.Multiline);
+		
+		foreach (object? value in content)
+		{
+			string replacement = String.Empty;
+			if (value != null)
+				replacement = value.ToString() ?? String.Empty;
+			fmt = replaceRegex.Replace(fmt, replacement, 1);
+		}
+		return fmt;
+	}
+
 	/// <summary>
 	/// The core backend for logging, it logs a message by severity, format and inlines content.
 	/// Content is inlined via <c>{}</c>'s(like log4j)
@@ -129,20 +149,9 @@ public class Logger
 		LogMessage message = new LogMessage
 		{
 			Severity = severity,
-			LoggerName = name
+			LoggerName = name,
+			Message = Format(fmt, content)
 		};
-
-		Regex replaceRegex = new Regex(Regex.Escape("{}"), RegexOptions.Compiled | RegexOptions.Multiline);
-		
-		foreach (object? value in content)
-		{
-			string replacement = String.Empty;
-			if (value != null)
-				replacement = value.ToString() ?? String.Empty;
-			fmt = replaceRegex.Replace(fmt, replacement, 1);
-		}
-
-		message.Message = fmt;
 		Print(message);
 	}
 
