@@ -15,6 +15,8 @@ public class Logger
 	/// The directory in which log files are put, set *before* InitializeSystem
 	/// </summary>
 	public static readonly string LogDirectory = Path.Join(Directory.GetCurrentDirectory(), "Logs");
+
+	private static TextWriter ConsoleOut;
 	
 	/// <summary>
 	/// Create any needed things
@@ -24,6 +26,7 @@ public class Logger
 		DefaultOutputs.Add(CreateLogFile("latest.log"));
 		DefaultOutputs.Add(
 			CreateLogFile($"{DateTime.Now.Day}-{DateTime.Now.Month}-{DateTime.Now.Year} {DateTime.Now.Hour}-{DateTime.Now.Minute}.log"));
+		ConsoleOut = Console.Out;
 	}
 	
 	/// <summary>
@@ -159,12 +162,12 @@ public class Logger
 	{
 		foreach (var output in outputs)
 		{
-			if(output == Console.Out)
+			if(output == ConsoleOut)
 				SetConsoleColours(message.Severity);
 			
 			Print(message, output);
 			
-			if(output == Console.Out)
+			if(output == ConsoleOut)
 				SetConsoleColours(message.Severity, true);
 		}
 	}
@@ -176,24 +179,15 @@ public class Logger
 			Console.ResetColor();
 			return;
 		}
-		switch (severity)
+		Console.ForegroundColor = severity switch
 		{
-			case LogSeverity.Debug:
-				Console.ForegroundColor = ConsoleColor.Gray;
-				break;
-			case LogSeverity.Info:
-				Console.ForegroundColor = ConsoleColor.White;
-				break;
-			case LogSeverity.Warning:
-				Console.ForegroundColor = ConsoleColor.Yellow;
-				break;
-			case LogSeverity.Error:
-				Console.ForegroundColor = ConsoleColor.Red;
-				break;
-			case LogSeverity.Fatal:
-				Console.ForegroundColor = ConsoleColor.DarkRed;
-				break;
-		}
+			LogSeverity.Debug => ConsoleColor.Gray,
+			LogSeverity.Info => ConsoleColor.White,
+			LogSeverity.Warning => ConsoleColor.Yellow,
+			LogSeverity.Error => ConsoleColor.Red,
+			LogSeverity.Fatal => ConsoleColor.DarkRed,
+			_ => Console.ForegroundColor
+		};
 	}
 
 	private void Print(LogMessage message, TextWriter writer)
