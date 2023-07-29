@@ -9,22 +9,26 @@ namespace OpenAbility.Logging;
 public class Logger
 {
 	private static readonly Dictionary<string, Logger> Loggers = new Dictionary<string, Logger>();
-	private static readonly List<TextWriter> DefaultOutputs = new List<TextWriter>();
+	private static readonly List<TextWriter> Outputs = new List<TextWriter>();
+	private static readonly List<LogMessage> Messages = new List<LogMessage>();
 	private static readonly string GlobalFormat = "[%severity%/%thread%] (%name%): %message%";
+
+	private static readonly Queue<LogMessage> MessageQueue = new Queue<LogMessage>();
+
 	/// <summary>
 	/// The directory in which log files are put, set *before* InitializeSystem
 	/// </summary>
 	public static readonly string LogDirectory = Path.Join(Directory.GetCurrentDirectory(), "Logs");
 
-	private static TextWriter ConsoleOut;
+	private static readonly TextWriter ConsoleOut;
 	
 	/// <summary>
 	/// Create any needed things
 	/// </summary>
 	static Logger() {
-		DefaultOutputs.Add(Console.Out);
-		DefaultOutputs.Add(CreateLogFile("latest.log"));
-		DefaultOutputs.Add(
+		Outputs.Add(Console.Out);
+		Outputs.Add(CreateLogFile("latest.log"));
+		Outputs.Add(
 			CreateLogFile($"{DateTime.Now.Day}-{DateTime.Now.Month}-{DateTime.Now.Year} {DateTime.Now.Hour}-{DateTime.Now.Minute}.log"));
 		ConsoleOut = Console.Out;
 	}
@@ -43,7 +47,17 @@ public class Logger
 		Loggers[name] = logger;
 		return logger;
 	}
-	
+
+	public static void AddOutput(TextWriter output)
+	{
+		Outputs.Add(output);
+	}
+
+	public static List<LogMessage> GetMessages()
+	{
+		return Messages;
+	}
+
 	/// <summary>
 	/// Get a logger by type
 	/// </summary>
@@ -63,12 +77,10 @@ public class Logger
 
 	private readonly string format;
 	private readonly string name;
-	private readonly List<TextWriter> outputs;
 	private Logger(string name)
 	{
 		this.format = GlobalFormat;
 		this.name = name;
-		outputs = new List<TextWriter>(DefaultOutputs);
 	}
 	
 	/// <summary>
@@ -149,18 +161,34 @@ public class Logger
 	/// <param name="content">The content to inline</param>
 	public void Log(LogSeverity severity, string fmt, params object?[] content)
 	{
+		
+
+		
 		LogMessage message = new LogMessage
 		{
 			Severity = severity,
 			LoggerName = name,
 			Message = Format(fmt, content)
 		};
+		
+		
+		string formatted = format;
+		formatted = formatted.Replace("%severity%", message.Severity.ToString());
+		formatted = formatted.Replace("%name%", message.LoggerName);
+		formatted = formatted.Replace("%message%", message.Message);
+		formatted = Thread.CurrentThread.Name != null ? 
+			formatted.Replace("%thread%", Thread.CurrentThread.Name + "(" + Thread.CurrentThread.ManagedThreadId + ")") : 
+			formatted.Replace("%thread%", "Thread " + Thread.CurrentThread.ManagedThreadId);
+
+		message.Formatted = formatted;
+		
 		Print(message);
+		Messages.Add(message);
 	}
 
 	private void Print(LogMessage message)
 	{
-		foreach (var output in outputs)
+		foreach (var output in Outputs)
 		{
 			if(output == ConsoleOut)
 				SetConsoleColours(message.Severity);
@@ -190,17 +218,20 @@ public class Logger
 		};
 	}
 
+	private static object writeLock = new object();
+
 	private void Print(LogMessage message, TextWriter writer)
 	{
-		string formatted = format;
-		formatted = formatted.Replace("%severity%", message.Severity.ToString());
-		formatted = formatted.Replace("%name%", message.LoggerName);
-		formatted = formatted.Replace("%message%", message.Message);
-		formatted = Thread.CurrentThread.Name != null ? 
-			formatted.Replace("%thread%", Thread.CurrentThread.Name + "(" + Thread.CurrentThread.ManagedThreadId + ")") : 
-			formatted.Replace("%thread%", "Thread " + Thread.CurrentThread.ManagedThreadId);
+		if (!Monitor.TryEnter(writeLock, 20))
+		{
+			Thread.Sleep(Random.Shared.Next(0, 1000));
+			ConsoleOut.WriteLine("Logging print reached race condition!");
+			return;
+		}
 
-		writer.WriteLine(formatted);
+		writer.WriteLine(message.Formatted);
 		writer.Flush();
+		
+		Monitor.Exit(writeLock);
 	}
 }
