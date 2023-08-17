@@ -14,23 +14,28 @@ public class Logger
 	private static readonly string GlobalFormat = "[%severity%/%thread%] (%name%): %message%";
 
 	private static readonly Queue<LogMessage> MessageQueue = new Queue<LogMessage>();
+    
 
-	/// <summary>
-	/// The directory in which log files are put, set *before* InitializeSystem
-	/// </summary>
-	public static readonly string LogDirectory = Path.Join(Directory.GetCurrentDirectory(), "Logs");
-
-	private static readonly TextWriter ConsoleOut;
+	private static TextWriter ConsoleOut = null!;
+    
 	
 	/// <summary>
 	/// Create any needed things
 	/// </summary>
-	static Logger() {
+	static Logger()
+	{
 		Outputs.Add(Console.Out);
-		Outputs.Add(CreateLogFile("latest.log"));
-		Outputs.Add(
-			CreateLogFile($"{DateTime.Now.Day}-{DateTime.Now.Month}-{DateTime.Now.Year} {DateTime.Now.Hour}-{DateTime.Now.Minute}.log"));
 		ConsoleOut = Console.Out;
+	}
+
+	public static void RegisterLogFile(string path)
+	{
+		TextWriter writer = File.CreateText(path);
+		foreach (var message in Messages)
+		{
+			Print(message, writer);
+		}
+		Outputs.Add(writer);
 	}
 	
 	/// <summary>
@@ -66,13 +71,6 @@ public class Logger
 	public static Logger Get<T>()
 	{
 		return Get(typeof(T).Name);
-	}
-	
-	private static TextWriter CreateLogFile(string name)
-	{
-		if (!Directory.Exists(LogDirectory))
-			Directory.CreateDirectory(LogDirectory);
-		return File.CreateText(Path.Combine(LogDirectory, name));
 	}
 
 	private readonly string format;
@@ -186,7 +184,7 @@ public class Logger
 		Messages.Add(message);
 	}
 
-	private void Print(LogMessage message)
+	private static void Print(LogMessage message)
 	{
 		foreach (var output in Outputs)
 		{
@@ -200,7 +198,7 @@ public class Logger
 		}
 	}
 
-	private void SetConsoleColours(LogSeverity severity, bool reset = false)
+	private static void SetConsoleColours(LogSeverity severity, bool reset = false)
 	{
 		if (reset)
 		{
@@ -220,7 +218,7 @@ public class Logger
 
 	private static object writeLock = new object();
 
-	private void Print(LogMessage message, TextWriter writer)
+	private static void Print(LogMessage message, TextWriter writer)
 	{
 		if (!Monitor.TryEnter(writeLock, 20))
 		{
