@@ -11,7 +11,7 @@ public class Logger
 	private static readonly Dictionary<string, Logger> Loggers = new Dictionary<string, Logger>();
 	private static readonly List<TextWriter> Outputs = new List<TextWriter>();
 	private static readonly List<LogMessage> Messages = new List<LogMessage>();
-	private static readonly string GlobalFormat = "[%severity%/%thread%] (%name%): %message%";
+	private static readonly string GlobalFormat = "[%severity%/%thread%] (%time%) (%name%): %message%";
 
 	private static readonly Queue<LogMessage> MessageQueue = new Queue<LogMessage>();
     
@@ -166,7 +166,8 @@ public class Logger
 		{
 			Severity = severity,
 			LoggerName = name,
-			Message = Format(fmt, content)
+			Message = Format(fmt, content),
+			Time = DateTime.Now
 		};
 		
 		
@@ -174,6 +175,7 @@ public class Logger
 		formatted = formatted.Replace("%severity%", message.Severity.ToString());
 		formatted = formatted.Replace("%name%", message.LoggerName);
 		formatted = formatted.Replace("%message%", message.Message);
+		formatted = formatted.Replace("%time%", message.Time.ToString("HH:mm:ss"));
 		formatted = Thread.CurrentThread.Name != null ? 
 			formatted.Replace("%thread%", Thread.CurrentThread.Name + "(" + Thread.CurrentThread.ManagedThreadId + ")") : 
 			formatted.Replace("%thread%", "Thread " + Thread.CurrentThread.ManagedThreadId);

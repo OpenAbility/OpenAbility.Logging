@@ -6,4 +6,5 @@ public struct LogMessage
 	public string LoggerName;
 	public string Message;
 	public string Formatted;
+	public DateTime Time;
 }
