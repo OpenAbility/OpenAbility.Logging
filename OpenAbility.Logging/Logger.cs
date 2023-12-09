@@ -175,7 +175,7 @@ public class Logger
 		string formatted = format;
 		formatted = formatted.Replace("%severity%", message.Severity.ToString());
 		formatted = formatted.Replace("%name%", message.LoggerName);
-		formatted = formatted.Replace("%module%", message.LoggerName);
+		formatted = formatted.Replace("%module%", message.LoggerModule);
 		formatted = formatted.Replace("%message%", message.Message);
 		formatted = formatted.Replace("%time%", message.Time.ToString("HH:mm:ss"));
 		formatted = Thread.CurrentThread.Name != null ? 

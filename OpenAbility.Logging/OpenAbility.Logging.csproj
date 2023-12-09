@@ -10,10 +10,10 @@
         <Company>OpenAbility</Company>
         <Product>OpenAbility.Logging</Product>
         <ProductName>OpenAbility.Logging</ProductName>
-        <ProductVersion>1.1.0</ProductVersion>
+        <ProductVersion>1.1.1</ProductVersion>
         <Authors>khhs</Authors>
-        <PackageVersion>1.1.0</PackageVersion>
-        
+        <PackageVersion>1.1.1</PackageVersion>
+
         <Description>
             OpenAbility.Logging is a super simple logging system. It is currently in a stable release, but far from complete.
         </Description>
