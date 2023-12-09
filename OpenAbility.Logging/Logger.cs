@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace OpenAbility.Logging;
@@ -11,12 +10,9 @@ public class Logger
 	private static readonly Dictionary<string, Logger> Loggers = new Dictionary<string, Logger>();
 	private static readonly List<TextWriter> Outputs = new List<TextWriter>();
 	private static readonly List<LogMessage> Messages = new List<LogMessage>();
-	private static readonly string GlobalFormat = "[%severity%/%thread%] (%time%) (%name%): %message%";
+	private static readonly string GlobalFormat = "[%severity%/%thread%] (%time%) (%name%/%module%): %message%";
 
-	private static readonly Queue<LogMessage> MessageQueue = new Queue<LogMessage>();
-    
-
-	private static TextWriter ConsoleOut = null!;
+	private static readonly TextWriter ConsoleOut;
     
 	
 	/// <summary>
@@ -37,18 +33,19 @@ public class Logger
 		}
 		Outputs.Add(writer);
 	}
-	
+
 	/// <summary>
 	/// Get a logger by name
 	/// </summary>
 	/// <param name="name">The name of the logger</param>
+	/// <param name="module">The module of the logger</param>
 	/// <returns>The logger with that name</returns>
-	public static Logger Get(string name)
+	public static Logger Get(string name, string module = "")
 	{
 		if (Loggers.TryGetValue(name, out Logger? existing))
 			return existing;
 
-		Logger logger = new Logger(name);
+		Logger logger = new Logger(name, module);
 		Loggers[name] = logger;
 		return logger;
 	}
@@ -66,19 +63,22 @@ public class Logger
 	/// <summary>
 	/// Get a logger by type
 	/// </summary>
+	/// <param name="module">The module of the logger</param>
 	/// <typeparam name="T">The type to get the logger from</typeparam>
 	/// <returns>The logger with the same name as the type</returns>
-	public static Logger Get<T>()
+	public static Logger Get<T>(string module = "")
 	{
-		return Get(typeof(T).Name);
+		return Get(typeof(T).Name, module);
 	}
 
 	private readonly string format;
 	private readonly string name;
-	private Logger(string name)
+	private readonly string module;
+	private Logger(string name, string module)
 	{
-		this.format = GlobalFormat;
+		format = GlobalFormat;
 		this.name = name;
+		this.module = module;
 	}
 	
 	/// <summary>
@@ -166,6 +166,7 @@ public class Logger
 		{
 			Severity = severity,
 			LoggerName = name,
+			LoggerModule = module,
 			Message = Format(fmt, content),
 			Time = DateTime.Now
 		};
@@ -174,6 +175,7 @@ public class Logger
 		string formatted = format;
 		formatted = formatted.Replace("%severity%", message.Severity.ToString());
 		formatted = formatted.Replace("%name%", message.LoggerName);
+		formatted = formatted.Replace("%module%", message.LoggerName);
 		formatted = formatted.Replace("%message%", message.Message);
 		formatted = formatted.Replace("%time%", message.Time.ToString("HH:mm:ss"));
 		formatted = Thread.CurrentThread.Name != null ? 
@@ -218,11 +220,11 @@ public class Logger
 		};
 	}
 
-	private static object writeLock = new object();
+	private static readonly object WriteLock = new object();
 
 	private static void Print(LogMessage message, TextWriter writer)
 	{
-		if (!Monitor.TryEnter(writeLock, 20))
+		if (!Monitor.TryEnter(WriteLock, 20))
 		{
 			Thread.Sleep(Random.Shared.Next(0, 1000));
 			ConsoleOut.WriteLine("Logging print reached race condition!");
@@ -232,6 +234,6 @@ public class Logger
 		writer.WriteLine(message.Formatted);
 		writer.Flush();
 		
-		Monitor.Exit(writeLock);
+		Monitor.Exit(WriteLock);
 	}
 }
