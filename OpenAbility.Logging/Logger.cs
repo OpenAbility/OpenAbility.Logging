@@ -13,6 +13,8 @@ public class Logger
 	private static readonly string GlobalFormat = "[%severity%/%thread%] (%time%) (%name%/%module%): %message%";
 
 	private static readonly TextWriter ConsoleOut;
+
+	public static LogSeverity MinimumSeverity = LogSeverity.Debug;
     
 	
 	/// <summary>
@@ -159,8 +161,8 @@ public class Logger
 	/// <param name="content">The content to inline</param>
 	public void Log(LogSeverity severity, string fmt, params object?[] content)
 	{
-		
-
+		if (severity < MinimumSeverity)
+			return;
 		
 		LogMessage message = new LogMessage
 		{
