@@ -44,11 +44,12 @@ public class Logger
 	/// <returns>The logger with that name</returns>
 	public static Logger Get(string name, string module = "")
 	{
-		if (Loggers.TryGetValue(name, out Logger? existing))
+		string id = name + "/" + module;
+		if (Loggers.TryGetValue(id, out Logger? existing))
 			return existing;
 
 		Logger logger = new Logger(name, module);
-		Loggers[name] = logger;
+		Loggers[id] = logger;
 		return logger;
 	}
 
@@ -68,9 +69,11 @@ public class Logger
 	/// <param name="module">The module of the logger</param>
 	/// <typeparam name="T">The type to get the logger from</typeparam>
 	/// <returns>The logger with the same name as the type</returns>
-	public static Logger Get<T>(string module = "")
+	public static Logger Get<T>()
 	{
-		return Get(typeof(T).Name, module);
+		if(typeof(T).Namespace == null)
+			return Get(typeof(T).Name);
+		return Get(typeof(T).Namespace!, typeof(T).Name);
 	}
 
 	private readonly string format;
