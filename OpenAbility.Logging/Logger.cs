@@ -149,7 +149,7 @@ public class Logger
 		{
 			string replacement = String.Empty;
 			if (value != null)
-				replacement = value.ToString() ?? String.Empty;
+				replacement = value.ToString() ?? "null";
 			fmt = replaceRegex.Replace(fmt, replacement, 1);
 		}
 		return fmt;
