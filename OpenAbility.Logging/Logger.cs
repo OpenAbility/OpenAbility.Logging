@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace OpenAbility.Logging;
@@ -13,6 +14,7 @@ public class Logger
 	private static readonly string GlobalFormat = "[%severity%/%thread%] (%time%) (%name%/%module%): %message%";
 
 	private static readonly TextWriter ConsoleOut;
+	private static readonly object Lock = new object();
 
 	public static LogSeverity MinimumSeverity = LogSeverity.Debug;
     
@@ -143,14 +145,15 @@ public class Logger
 
 	private string Format(string fmt, params object?[] content)
 	{
-		Regex replaceRegex = new Regex(Regex.Escape("{}"), RegexOptions.Compiled | RegexOptions.Multiline);
-		
-		foreach (object? value in content)
+		for (int i = 0; i < content.Length; i++)
 		{
-			string replacement = String.Empty;
-			if (value != null)
-				replacement = value.ToString() ?? "null";
-			fmt = replaceRegex.Replace(fmt, replacement, 1);
+			fmt = fmt.Replace("{" + i + "}", content[i]?.ToString() ?? "null");
+
+			int firstEmpty = fmt.IndexOf("{}", StringComparison.InvariantCulture);
+			if (firstEmpty >= 0)
+			{
+				fmt = fmt[..firstEmpty] + content[i] + fmt[(firstEmpty + 2)..];
+			}
 		}
 		return fmt;
 	}
@@ -164,33 +167,38 @@ public class Logger
 	/// <param name="content">The content to inline</param>
 	public void Log(LogSeverity severity, string fmt, params object?[] content)
 	{
-		if (severity < MinimumSeverity)
-			return;
-		
-		LogMessage message = new LogMessage
+		lock (Lock)
 		{
-			Severity = severity,
-			LoggerName = name,
-			LoggerModule = module,
-			Message = Format(fmt, content),
-			Time = DateTime.Now
-		};
-		
-		
-		string formatted = format;
-		formatted = formatted.Replace("%severity%", message.Severity.ToString());
-		formatted = formatted.Replace("%name%", message.LoggerName);
-		formatted = formatted.Replace("%module%", message.LoggerModule);
-		formatted = formatted.Replace("%message%", message.Message);
-		formatted = formatted.Replace("%time%", message.Time.ToString("HH:mm:ss"));
-		formatted = Thread.CurrentThread.Name != null ? 
-			formatted.Replace("%thread%", Thread.CurrentThread.Name + "(" + Thread.CurrentThread.ManagedThreadId + ")") : 
-			formatted.Replace("%thread%", "Thread " + Thread.CurrentThread.ManagedThreadId);
 
-		message.Formatted = formatted;
-		
-		Print(message);
-		Messages.Add(message);
+
+			if (severity < MinimumSeverity)
+				return;
+
+			LogMessage message = new LogMessage
+			{
+				Severity = severity,
+				LoggerName = name,
+				LoggerModule = module,
+				Message = Format(fmt, content),
+				Time = DateTime.Now
+			};
+
+
+			string formatted = format;
+			formatted = formatted.Replace("%severity%", message.Severity.ToString());
+			formatted = formatted.Replace("%name%", message.LoggerName);
+			formatted = formatted.Replace("%module%", message.LoggerModule);
+			formatted = formatted.Replace("%message%", message.Message);
+			formatted = formatted.Replace("%time%", message.Time.ToString("HH:mm:ss"));
+			formatted = Thread.CurrentThread.Name != null
+				? formatted.Replace("%thread%", Thread.CurrentThread.Name + "(" + Thread.CurrentThread.ManagedThreadId + ")")
+				: formatted.Replace("%thread%", "Thread " + Thread.CurrentThread.ManagedThreadId);
+
+			message.Formatted = formatted;
+
+			Print(message);
+			Messages.Add(message);
+		}
 	}
 
 	private static void Print(LogMessage message)
