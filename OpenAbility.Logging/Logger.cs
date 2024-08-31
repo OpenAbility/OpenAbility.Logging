@@ -31,7 +31,7 @@ public class Logger
 	public static void RegisterLogFile(string path)
 	{
 		TextWriter writer = File.CreateText(path);
-		foreach (var message in Messages)
+		foreach (var message in Messages.ToArray())
 		{
 			Print(message, writer);
 		}
