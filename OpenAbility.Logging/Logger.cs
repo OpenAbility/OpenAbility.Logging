@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -140,7 +141,8 @@ public class Logger
 
 	public void Throw(string fmt, params object?[] content)
 	{
-		Log(LogSeverity.Fatal, "{}:\n{}", Format(fmt, content), Environment.StackTrace);
+		StackTrace stackTrace = new StackTrace(2);
+		Log(LogSeverity.Fatal, "{}\n{}", Format(fmt, content), stackTrace.ToString());
 	}
 
 	private string Format(string fmt, params object?[] content)
